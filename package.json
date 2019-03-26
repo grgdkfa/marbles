@@ -1,0 +1,22 @@
+{
+  "name": "marbles",
+  "version": "0.0.9",
+  "description": "Simple physics game",
+  "main": "index.js",
+  "scripts": {
+    "watch": "watchify src/game.js -o js/bundle.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/grgdkfa/marbles.git"
+  },
+  "author": "grgdkfa",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/grgdkfa/marbles/issues"
+  },
+  "homepage": "https://github.com/grgdkfa/marbles#readme",
+  "dependencies": {
+    "watchify": "^3.11.1"
+  }
+}
