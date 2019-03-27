@@ -6,13 +6,18 @@ const MAX_SIZE = 5;
 
 class Ball {
     constructor() {
-        this.bounce = 0.8;
+        this.bounce = 0.98;
         this.active = false;
 
         this.position = new v.Vector();
         this.velocity = new v.Vector();
 
         this.init();
+    }
+
+    setSize(s) {
+        this.size = s;
+        this.mass = s * s;
     }
 
     init() {

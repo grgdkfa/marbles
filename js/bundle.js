@@ -7,13 +7,18 @@ const MAX_SIZE = 5;
 
 class Ball {
     constructor() {
-        this.bounce = 0.8;
+        this.bounce = 0.98;
         this.active = false;
 
         this.position = new v.Vector();
         this.velocity = new v.Vector();
 
         this.init();
+    }
+
+    setSize(s) {
+        this.size = s;
+        this.mass = s * s;
     }
 
     init() {
@@ -84,13 +89,29 @@ class World {
             a.position.x = Math.random() * this.width;
             a.position.y = Math.random() * this.height;
 
-            a.size = (minSize + Math.random() * (maxSize - minSize)) / 2;
+            a.setSize((minSize + Math.random() * (maxSize - minSize)) / 2);
 
             a.velocity.x = Math.random() - 0.5;
             a.velocity.y = Math.random() - 0.5;
+            a.velocity.scale(50);
 
             a.active = true;
         }
+        /*const a = new Ball();
+        a.position.set(100, 100);
+        a.velocity.set(50, 0);
+        a.size = 50;
+        a.mass = 5;
+        a.active = true;
+        this.balls[0] = a;
+
+        const b = new Ball();
+        b.position.set(200, 100);
+        b.velocity.set(-20, 0);
+        b.size = 50;
+        b.mass = 1;
+        b.active = true;
+        this.balls[1] = b;*/
     }
 
     solve(dt) {
@@ -98,38 +119,64 @@ class World {
 
         for(let i=0; i<this.balls.length; i++) {
             const a = this.balls[i];
+            if(!a.active) {
+                continue;
+            }
             v.adds(a.velocity, g, a.velocity);
             v.combine(a.position, a.velocity, dt);
         }
 
-        const distance = new v.Vector();
-        const impulse = new v.Vector();
+        const normal = new v.Vector();
+        const tangent = new v.Vector();
 
         for(let i=0; i<this.balls.length - 1; i++) {
             const a = this.balls[i];
+            if(!a.active) {
+                continue;
+            }
             for(let j=i+1; j<this.balls.length; j++) {
                 const b = this.balls[j];
+                if(!b.active) {
+                    continue;
+                }
 
-                v.subs(a.position, b.position, distance);
-                if(distance.sqrLength() < Math.pow(a.size + b.size, 2)) {
-                    let distanceLength = distance.length();
-                    distance.scale(1 / distanceLength);
-                    distanceLength -= a.size + b.size;
+                v.subs(a.position, b.position, normal);
+                if(normal.sqrLength() < Math.pow(a.size + b.size, 2)) {
+                    let normalLength = normal.length();
+                    normal.scale(1 / normalLength);
+                    tangent.set(-normal.y, normal.x);
+                    normalLength -= a.size + b.size;
 
-                    v.combine(a.position, distance, -distanceLength * 0.5);
-                    v.combine(b.position, distance, distanceLength * 0.5);
+                    v.combine(a.position, normal, -normalLength * b.mass / (a.mass + b.mass));
+                    v.combine(b.position, normal, normalLength * a.mass / (a.mass + b.mass));
 
-                    impulse.x = 2 * (a.mass * a.velocity.x + b.mass * b.velocity.x) / (a.mass * b.mass);
-                    impulse.y = 2 * (a.mass * a.velocity.y + b.mass * b.velocity.y) / (a.mass * b.mass);
+                    /*v.combine(a.velocity, normal, -normalLength * b.mass / (a.mass + b.mass));
+                    v.combine(b.velocity, normal, normalLength * a.mass / (a.mass + b.mass));*/
 
-                    /*a.velocity.addImpulse(impulse, a.bounce);
-                    b.velocity.addImpulse(impulse, b.bounce);*/
+                    // 1d impulses of balls
+                    let normalVelocityA = v.dot(a.velocity, normal);
+                    let normalVelocityB = v.dot(b.velocity, normal);
+
+                    let tangentVelocityA = v.dot(a.velocity, tangent);
+                    let tangentVelocityB = v.dot(b.velocity, tangent);
+
+                    let av = (normalVelocityA * (a.mass - b.mass) + 2 * b.mass * normalVelocityB) / (a.mass + b.mass);
+                    let bv = (normalVelocityB * (b.mass - a.mass) + 2 * a.mass * normalVelocityA) / (a.mass + b.mass);
+
+                    a.velocity.x = (tangent.x * tangentVelocityA + normal.x * av) * a.bounce;
+                    a.velocity.y = (tangent.y * tangentVelocityA + normal.y * av) * a.bounce;
+
+                    b.velocity.x = (tangent.x * tangentVelocityB + normal.x * bv) * b.bounce;
+                    b.velocity.y = (tangent.y * tangentVelocityB + normal.y * bv) * b.bounce;
                 }
             }
         }
 
         for(let i=0; i<this.balls.length; i++) {
             const a = this.balls[i];
+            if(!a.active) {
+                continue;
+            }
             if(a.position.y + a.size > this.height) {
                 a.position.y -= a.position.y + a.size - this.height;
                 a.velocity.y *= -a.bounce;
@@ -196,6 +243,11 @@ class Vector {
     constructor(x, y) {
         this.x = x || 0;
         this.y = y || 0;
+    }
+
+    set(x, y) {
+        this.x = x;
+        this.y = y;
     }
 
     length() {
