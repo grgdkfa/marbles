@@ -6,7 +6,7 @@ const MAX_SIZE = 5;
 
 class Ball {
     constructor() {
-        this.bounce = 0.98;
+        this.bounce = 0.7;
         this.active = false;
 
         this.position = new v.Vector();

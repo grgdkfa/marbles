@@ -4,19 +4,33 @@ const World = require('./physics');
 
 class Game {
 	constructor() {
-		this.width = window.innerWidth;
-		this.height = window.innerHeight;
+		this.width = 600; //window.innerWidth;
+		this.height = 400; //window.innerHeight;
 		this.renderer = new Renderer('.game-canvas');
-		this.world = new World(this.width, this.height, 10);
+		this.world = new World(this.width, this.height, 120);
 
 		this.renderer.resize(this.width, this.height);
 		this.world.init();
+		this.initListeners();
+	}
+
+	initListeners() {
+		this.renderer.canvas.addEventListener("click", event => {
+			const x = event.pageX;
+			const y = event.pageY;
+			const ball = this.world.getBallAt(x, y);
+			if(ball) {
+				this.ballClick(ball);
+			}
+		});
+	}
+
+	ballClick(ball) {
+		ball.active = false;
 	}
 
 	frame() {
-		for(let i=0; i<10; i++) {
-			this.world.solve(0.01);
-		}
+		this.world.update(0.1);
 		this.renderer.render(this.world.balls);
 	}
 }
