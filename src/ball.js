@@ -5,10 +5,12 @@ const MIN_SIZE = 2;
 const MAX_SIZE = 5;
 
 class Ball {
-    constructor() {
-        this.bounce = 0.7;
+    constructor(id) {
+        this.id = id;
         this.active = false;
+        this.timer = 0;
 
+        this.bounce = 0.7;
         this.position = new v.Vector();
         this.velocity = new v.Vector();
 

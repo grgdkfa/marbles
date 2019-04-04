@@ -1,4 +1,6 @@
 
+const v = require('./vector');
+
 const PALETTE = {
 	BACKGROUND: "#372D2D",
 	BALLS: ["#FFFF00", "#00BE45", "#00C6FF", "#FF0007", "#924CAB"],
@@ -21,7 +23,7 @@ class Renderer {
         this.canvas.height = this.height;
     }
 
-    render(balls) {
+    render(balls, contacts) {
         const ctx = this.context;
         ctx.fillStyle = PALETTE.BACKGROUND;
         ctx.fillRect(0, 0, this.width, this.height);
@@ -36,6 +38,7 @@ class Renderer {
             ctx.arc(a.position.x, a.position.y, a.size, 0, Math.PI * 2);
             ctx.fill();
         }
+
     }
 }
 

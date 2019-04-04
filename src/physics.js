@@ -6,7 +6,7 @@ class World {
     constructor(width, height, count) {
         this.width = width;
         this.height = height;
-        this.gravity = new v.Vector(0, 15);
+        this.gravity = new v.Vector(0, 25);
         this.setCount(count);
 
         this.iterations = 10;
@@ -16,7 +16,7 @@ class World {
         count = count || 0;
         this.balls = new Array(count);
         for(let i = 0; i < count; i++) {
-            this.balls[i] = new Ball();
+            this.balls[i] = new Ball(i);
         }
     }
 
