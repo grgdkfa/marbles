@@ -238,7 +238,7 @@ class Game {
 				}
 				this.signPainter.showCountdown(5 - this.countDown);
 				this.countDown++;
-				if(this.countDown == 5) {
+				if(this.countDown == 6) {
 					this.nextLevel();
 				} else {
 					this.countDownTimeout = 0;
