@@ -3,5 +3,52 @@ html, body {
     margin: 0;
     padding: 0;
     font-family: 'Neucha', cursive;
+    font-size: 36px;
     overflow: hidden;
+}
+
+.score {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    color: #eee;
+}
+
+.level {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: #eee;
+}
+
+.rise {
+    position: absolute;
+    animation: rise 0.8s ease-in;
+    color: limegreen;
+}
+
+.countdown.rise {
+    color: #eee;
+    font-size: 45px;
+}
+
+.penalty.rise {
+    color: red;
+    font-size: 45px;
+}
+
+@keyframes rise {
+    from {
+        transform: translate(-50%, -50%);
+        opacity: 1.0;
+    }
+
+    50% {
+        opacity: 0.9;
+    }
+
+    to {
+        transform: translate(-50%, -350%);
+        opacity: 0;
+    }
 }

@@ -10,7 +10,7 @@ class Ball {
         this.active = false;
         this.timer = 0;
 
-        this.bounce = 0.7;
+        this.bounce = 0.5;
         this.position = new v.Vector();
         this.velocity = new v.Vector();
 

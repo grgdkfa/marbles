@@ -11,7 +11,7 @@ class Ball {
         this.active = false;
         this.timer = 0;
 
-        this.bounce = 0.7;
+        this.bounce = 0.5;
         this.position = new v.Vector();
         this.velocity = new v.Vector();
 
@@ -41,6 +41,7 @@ class ContactManager {
 	constructor(count) {
 		this.treshold = 0.02;
 		this.links = [];
+		this.hasContacts = false;
 		for(let i = 0; i < count - 1; i++) {
 			this.links.push([]);
 			for(let j = i + 1; j < count; j++) {
@@ -59,6 +60,7 @@ class ContactManager {
 
 	check(balls) {
 		this.reset();
+		this.hasContacts = false;
 		const d = new v.Vector();
 		for(let i=0; i < this.links.length - 1; i++) {
 			const a = balls[i];
@@ -71,6 +73,7 @@ class ContactManager {
 					&& a.timer == 0
 					&& b.timer == 0
 					&& d.sqrLength() < Math.pow( (a.size + b.size) * (1 + this.treshold), 2)) {
+					this.hasContacts = true;
 					this.links[i][j] = true;
 				} else {
 					this.links[i][j] = false;
@@ -131,6 +134,50 @@ class ContactManager {
 	}
 }
 
+class SignPainter {
+	constructor() {
+
+	}
+
+	showScore(x, y, amount) {
+		const sign = document.createElement('div');
+		document.body.appendChild(sign);
+		sign.addEventListener('animationend', function() {
+			document.body.removeChild(this);
+		});
+		sign.classList.add('rise');
+		sign.style.top = `${y}px`;
+		sign.style.left = `${x}px`;
+		sign.textContent = amount;
+	}
+
+	showCountdown(countdown) {
+		const sign = document.createElement('div');
+		document.body.appendChild(sign);
+		sign.addEventListener('animationend', function() {
+			document.body.removeChild(this);
+		});
+		sign.classList.add('rise');
+		sign.classList.add('countdown');
+		sign.style.top = `${window.innerHeight / 2}px`;
+		sign.style.left = `${window.innerWidth / 2}px`;
+		sign.textContent = countdown;
+	}
+
+	showPenalty(amount) {
+		const sign = document.createElement('div');
+		document.body.appendChild(sign);
+		sign.addEventListener('animationend', function() {
+			document.body.removeChild(this);
+		});
+		sign.classList.add('rise');
+		sign.classList.add('penalty');
+		sign.style.top = `${window.innerHeight / 2}px`;
+		sign.style.left = `${window.innerWidth / 2}px`;
+		sign.textContent = amount;
+	}
+}
+
 class Game {
 	constructor() {
 		this.ballCount = 120;
@@ -139,10 +186,32 @@ class Game {
 		this.renderer = new Renderer('.game-canvas');
 		this.world = new World(this.width, this.height, this.ballCount);
 		this.contacts = new ContactManager(this.ballCount);
+		this.signPainter = new SignPainter();
+
+		this.level = 1;
+		this.score = 0;
+		this.countDown = 0;
+		this.countDownTimeout = 0;
 
 		this.renderer.resize(this.width, this.height);
 		this.world.init();
 		this.initListeners();
+
+		this.updateLevel();
+		this.updateScore();
+	}
+
+	updateLevel() {
+		document.querySelector('.level').textContent = `Level ${this.level}`;
+	}
+
+	updateScore() {
+		document.querySelector('.score').textContent = `${this.score} points`;
+	}
+
+	addScore(amount) {
+		this.score += amount;
+		this.updateScore();
 	}
 
 	initListeners() {
@@ -160,7 +229,25 @@ class Game {
 		if(this.contacts.isConnected(ball)) {
 			const cluster = this.contacts.getCluster(ball);
 			cluster.forEach(contact => this.world.balls[contact.id].timer = contact.level * 3);
+			const score = Math.floor(Math.pow(cluster.length - 1, 1.5));
+			this.addScore(score);
+			this.signPainter.showScore(ball.position.x, ball.position.y, score);
 		}
+	}
+
+	nextLevel() {
+		let penalty = 0;
+		for(let i=0; i<this.world.balls.length; i++) {
+			if(this.world.balls[i].active) {
+				penalty++;
+			}
+		}
+		penalty = penalty * penalty;
+		this.addScore(-penalty);
+		this.level++;
+		this.updateLevel();
+		this.signPainter.showPenalty(-penalty);
+		this.world.spawnBalls();
 	}
 
 	frame() {
@@ -175,6 +262,22 @@ class Game {
 				balls[i].active = false;
 			}
 			balls[i].timer = balls[i].timer == 0 ? 0 : balls[i].timer - 1;
+		}
+
+		if(!this.contacts.hasContacts && !this.countDownTimeout) {
+			this.countDownTimeout = setTimeout(() => {
+				if(this.hasContacts) {
+					this.countDown = 0;
+					return;
+				}
+				this.signPainter.showCountdown(5 - this.countDown);
+				this.countDown++;
+				if(this.countDown == 5) {
+					this.nextLevel();
+				} else {
+					this.countDownTimeout = 0;
+				}
+			}, 1000);
 		}
 	}
 }
@@ -210,21 +313,7 @@ class World {
     }
 
     init() {
-        const maxSize = this.width * 0.10;
-        const minSize = this.width * 0.04;
-        for(let i=0; i<this.balls.length; i++) {
-            const a = this.balls[i];
-            a.position.x = Math.random() * this.width;
-            a.position.y = this.height - Math.random() * this.height * 4;
-
-            a.setSize((minSize + Math.pow(Math.random(), 1.5) * (maxSize - minSize)) / 2);
-
-            a.velocity.x = Math.random() - 0.5;
-            a.velocity.y = Math.random() - 0.5;
-            a.velocity.scale(150);
-
-            a.active = true;
-        }
+        this.spawnBalls();
         /*const a = new Ball();
         a.position.set(100, 350);
         a.velocity.set(0, 0);
@@ -240,6 +329,27 @@ class World {
         b.mass = 1;
         b.active = true;
         this.balls[1] = b;*/
+    }
+
+    spawnBalls() {
+        const maxSize = this.width * devicePixelRatio * 0.08;
+        const minSize = this.width * devicePixelRatio * 0.03;
+        for(let i=0; i<this.balls.length; i++) {
+            const a = this.balls[i];
+            if(a.active) {
+                continue;
+            }
+            a.position.x = Math.random() * this.width;
+            a.position.y = this.height - Math.random() * this.height * 4;
+
+            a.setSize((minSize + Math.pow(Math.random(), 1.5) * (maxSize - minSize)) / 2);
+
+            a.velocity.x = Math.random() - 0.5;
+            a.velocity.y = Math.random() - 0.5;
+            a.velocity.scale(150);
+
+            a.active = true;
+        }
     }
 
     update(dt) {
@@ -264,8 +374,8 @@ class World {
         const tangent = new v.Vector();
 
         // makeshift regularization parameter
-        const PUSH = 1 + 1e-4;
-        const KICK = 1;
+        const PUSH = 0.1;
+        const KICK = this.gravity.length() * 1e-0;
 
         for(let i=0; i<this.balls.length - 1; i++) {
             const a = this.balls[i];
@@ -284,12 +394,13 @@ class World {
                     normal.scale(1 / normalLength);
                     tangent.set(-normal.y, normal.x);
                     normalLength -= a.size + b.size;
+                    if(normalLength > 0) {
+                        debugger;
+                        normalLength = 0;
+                    }
 
-                    v.combine(a.position, normal, -normalLength * b.mass * PUSH / (a.mass + b.mass));
-                    v.combine(b.position, normal, normalLength * a.mass * PUSH / (a.mass + b.mass));
-
-                    v.combine(a.velocity, normal, -KICK * b.mass / (a.mass + b.mass));
-                    v.combine(b.velocity, normal, KICK * a.mass / (a.mass + b.mass));
+                    v.combine(a.position, normal, -(normalLength - PUSH) * b.mass / (a.mass + b.mass));
+                    v.combine(b.position, normal, (normalLength - PUSH) * a.mass / (a.mass + b.mass));
 
                     // 1d impulses of balls
                     let normalVelocityA = v.dot(a.velocity, normal);
@@ -306,6 +417,9 @@ class World {
 
                     b.velocity.x = (tangent.x * tangentVelocityB + normal.x * bv * b.bounce);
                     b.velocity.y = (tangent.y * tangentVelocityB + normal.y * bv * b.bounce);
+
+                    v.combine(a.velocity, normal, -KICK * normalLength * b.mass / (a.mass + b.mass));
+                    v.combine(b.velocity, normal, KICK * normalLength * a.mass / (a.mass + b.mass));
                 }
             }
         }

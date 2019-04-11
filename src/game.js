@@ -7,6 +7,7 @@ class ContactManager {
 	constructor(count) {
 		this.treshold = 0.02;
 		this.links = [];
+		this.hasContacts = false;
 		for(let i = 0; i < count - 1; i++) {
 			this.links.push([]);
 			for(let j = i + 1; j < count; j++) {
@@ -25,6 +26,7 @@ class ContactManager {
 
 	check(balls) {
 		this.reset();
+		this.hasContacts = false;
 		const d = new v.Vector();
 		for(let i=0; i < this.links.length - 1; i++) {
 			const a = balls[i];
@@ -37,6 +39,7 @@ class ContactManager {
 					&& a.timer == 0
 					&& b.timer == 0
 					&& d.sqrLength() < Math.pow( (a.size + b.size) * (1 + this.treshold), 2)) {
+					this.hasContacts = true;
 					this.links[i][j] = true;
 				} else {
 					this.links[i][j] = false;
@@ -97,6 +100,50 @@ class ContactManager {
 	}
 }
 
+class SignPainter {
+	constructor() {
+
+	}
+
+	showScore(x, y, amount) {
+		const sign = document.createElement('div');
+		document.body.appendChild(sign);
+		sign.addEventListener('animationend', function() {
+			document.body.removeChild(this);
+		});
+		sign.classList.add('rise');
+		sign.style.top = `${y}px`;
+		sign.style.left = `${x}px`;
+		sign.textContent = amount;
+	}
+
+	showCountdown(countdown) {
+		const sign = document.createElement('div');
+		document.body.appendChild(sign);
+		sign.addEventListener('animationend', function() {
+			document.body.removeChild(this);
+		});
+		sign.classList.add('rise');
+		sign.classList.add('countdown');
+		sign.style.top = `${window.innerHeight / 2}px`;
+		sign.style.left = `${window.innerWidth / 2}px`;
+		sign.textContent = countdown;
+	}
+
+	showPenalty(amount) {
+		const sign = document.createElement('div');
+		document.body.appendChild(sign);
+		sign.addEventListener('animationend', function() {
+			document.body.removeChild(this);
+		});
+		sign.classList.add('rise');
+		sign.classList.add('penalty');
+		sign.style.top = `${window.innerHeight / 2}px`;
+		sign.style.left = `${window.innerWidth / 2}px`;
+		sign.textContent = amount;
+	}
+}
+
 class Game {
 	constructor() {
 		this.ballCount = 120;
@@ -105,10 +152,32 @@ class Game {
 		this.renderer = new Renderer('.game-canvas');
 		this.world = new World(this.width, this.height, this.ballCount);
 		this.contacts = new ContactManager(this.ballCount);
+		this.signPainter = new SignPainter();
+
+		this.level = 1;
+		this.score = 0;
+		this.countDown = 0;
+		this.countDownTimeout = 0;
 
 		this.renderer.resize(this.width, this.height);
 		this.world.init();
 		this.initListeners();
+
+		this.updateLevel();
+		this.updateScore();
+	}
+
+	updateLevel() {
+		document.querySelector('.level').textContent = `Level ${this.level}`;
+	}
+
+	updateScore() {
+		document.querySelector('.score').textContent = `${this.score} points`;
+	}
+
+	addScore(amount) {
+		this.score += amount;
+		this.updateScore();
 	}
 
 	initListeners() {
@@ -126,7 +195,25 @@ class Game {
 		if(this.contacts.isConnected(ball)) {
 			const cluster = this.contacts.getCluster(ball);
 			cluster.forEach(contact => this.world.balls[contact.id].timer = contact.level * 3);
+			const score = Math.floor(Math.pow(cluster.length - 1, 1.5));
+			this.addScore(score);
+			this.signPainter.showScore(ball.position.x, ball.position.y, score);
 		}
+	}
+
+	nextLevel() {
+		let penalty = 0;
+		for(let i=0; i<this.world.balls.length; i++) {
+			if(this.world.balls[i].active) {
+				penalty++;
+			}
+		}
+		penalty = penalty * penalty;
+		this.addScore(-penalty);
+		this.level++;
+		this.updateLevel();
+		this.signPainter.showPenalty(-penalty);
+		this.world.spawnBalls();
 	}
 
 	frame() {
@@ -141,6 +228,22 @@ class Game {
 				balls[i].active = false;
 			}
 			balls[i].timer = balls[i].timer == 0 ? 0 : balls[i].timer - 1;
+		}
+
+		if(!this.contacts.hasContacts && !this.countDownTimeout) {
+			this.countDownTimeout = setTimeout(() => {
+				if(this.hasContacts) {
+					this.countDown = 0;
+					return;
+				}
+				this.signPainter.showCountdown(5 - this.countDown);
+				this.countDown++;
+				if(this.countDown == 5) {
+					this.nextLevel();
+				} else {
+					this.countDownTimeout = 0;
+				}
+			}, 1000);
 		}
 	}
 }

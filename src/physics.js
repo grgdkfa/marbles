@@ -21,21 +21,7 @@ class World {
     }
 
     init() {
-        const maxSize = this.width * 0.10;
-        const minSize = this.width * 0.04;
-        for(let i=0; i<this.balls.length; i++) {
-            const a = this.balls[i];
-            a.position.x = Math.random() * this.width;
-            a.position.y = this.height - Math.random() * this.height * 4;
-
-            a.setSize((minSize + Math.pow(Math.random(), 1.5) * (maxSize - minSize)) / 2);
-
-            a.velocity.x = Math.random() - 0.5;
-            a.velocity.y = Math.random() - 0.5;
-            a.velocity.scale(150);
-
-            a.active = true;
-        }
+        this.spawnBalls();
         /*const a = new Ball();
         a.position.set(100, 350);
         a.velocity.set(0, 0);
@@ -51,6 +37,27 @@ class World {
         b.mass = 1;
         b.active = true;
         this.balls[1] = b;*/
+    }
+
+    spawnBalls() {
+        const maxSize = this.width * devicePixelRatio * 0.08;
+        const minSize = this.width * devicePixelRatio * 0.03;
+        for(let i=0; i<this.balls.length; i++) {
+            const a = this.balls[i];
+            if(a.active) {
+                continue;
+            }
+            a.position.x = Math.random() * this.width;
+            a.position.y = this.height - Math.random() * this.height * 4;
+
+            a.setSize((minSize + Math.pow(Math.random(), 1.5) * (maxSize - minSize)) / 2);
+
+            a.velocity.x = Math.random() - 0.5;
+            a.velocity.y = Math.random() - 0.5;
+            a.velocity.scale(150);
+
+            a.active = true;
+        }
     }
 
     update(dt) {
@@ -75,8 +82,8 @@ class World {
         const tangent = new v.Vector();
 
         // makeshift regularization parameter
-        const PUSH = 1 + 1e-4;
-        const KICK = 1;
+        const PUSH = 0.1;
+        const KICK = this.gravity.length() * 1e-0;
 
         for(let i=0; i<this.balls.length - 1; i++) {
             const a = this.balls[i];
@@ -95,12 +102,13 @@ class World {
                     normal.scale(1 / normalLength);
                     tangent.set(-normal.y, normal.x);
                     normalLength -= a.size + b.size;
+                    if(normalLength > 0) {
+                        debugger;
+                        normalLength = 0;
+                    }
 
-                    v.combine(a.position, normal, -normalLength * b.mass * PUSH / (a.mass + b.mass));
-                    v.combine(b.position, normal, normalLength * a.mass * PUSH / (a.mass + b.mass));
-
-                    v.combine(a.velocity, normal, -KICK * b.mass / (a.mass + b.mass));
-                    v.combine(b.velocity, normal, KICK * a.mass / (a.mass + b.mass));
+                    v.combine(a.position, normal, -(normalLength - PUSH) * b.mass / (a.mass + b.mass));
+                    v.combine(b.position, normal, (normalLength - PUSH) * a.mass / (a.mass + b.mass));
 
                     // 1d impulses of balls
                     let normalVelocityA = v.dot(a.velocity, normal);
@@ -117,6 +125,9 @@ class World {
 
                     b.velocity.x = (tangent.x * tangentVelocityB + normal.x * bv * b.bounce);
                     b.velocity.y = (tangent.y * tangentVelocityB + normal.y * bv * b.bounce);
+
+                    v.combine(a.velocity, normal, -KICK * normalLength * b.mass / (a.mass + b.mass));
+                    v.combine(b.velocity, normal, KICK * normalLength * a.mass / (a.mass + b.mass));
                 }
             }
         }
